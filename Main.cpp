@@ -303,78 +303,131 @@ void ClearBackGround(HDC hdc, HWND hwnd, RECT rect) {
     DeleteObject(brush);
 }
 
+void positionBlock(Block& block, int i, int j) {
+    block.Position.x1 = j * 16;
+    block.Position.y1 = i * 16;
+    block.Position.x2 = (j + 1) * 16;
+    block.Position.y2 = (i + 1) * 16;
+}
+
 void createOneLevel() {
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
             if (i == 0 || i == HEIGHT - 1) {
                 Map1[i][j].blockNumber = Block::border;
+                positionBlock(Map1[i][j], i, j);
                 continue;
             }
             if (j == 0 || j == WIDTH - 1) {
                 Map1[i][j].blockNumber = Block::border;
+                positionBlock(Map1[i][j], i, j);
                 continue;
             }
             Map1[i][j].blockNumber = Block::emptiness;
+            positionBlock(Map1[i][j], i, j);
         }
     }
     for (int i = 4; i < 8; i++) {
-        for (int j = 3; j < 5; j++)
+        for (int j = 3; j < 5; j++) {
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 7; j < 9; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 7; j < 9; j++) {
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 11; j < 13; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 11; j < 13; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 15; j < 16; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 15; j < 16; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 18; j < 19; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 18; j < 19; j++){
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
     }
 
     for (int i = 4; i < 6; i++) {
-        for (int j = 21; j < WIDTH - 3; j++)
+        for (int j = 21; j < WIDTH - 3; j++) {
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
     }
 
     Map1[5][16].blockNumber = Block::brick;
+    positionBlock(Map1[5][16], 5, 16);
     Map1[5][17].blockNumber = Block::brick;
+    positionBlock(Map1[5][17], 5, 17);
     Map1[HEIGHT - 2][14].blockNumber = Block::base;
+    positionBlock(Map1[HEIGHT - 2][14], HEIGHT - 2, 14);
 
     for (int i = 10; i < 12; i++) {
-        for (int j = 2; j < 8; j++)
+        for (int j = 2; j < 8; j++){
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
 
-        for (int j = 10; j < 16; j++)
+        for (int j = 10; j < 16; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 18; j < 19; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 18; j < 19; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 21; j < WIDTH - 3; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 21; j < WIDTH - 3; j++) {
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
     }
 
     for (int i = 14; i < 17; i++) {
-        for (int j = 2; j < 4; j++)
+        for (int j = 2; j < 4; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 6; j < 9; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 6; j < 9; j++) {
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 12; j < 16; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 12; j < 16; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 18; j < 19; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 18; j < 19; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 21; j < WIDTH - 3; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 21; j < WIDTH - 3; j++){
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
     }
 
     for (int i = 22; i < 26; i++) {
-        for (int j = 2; j < 4; j++)
+        for (int j = 2; j < 4; j++) {
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 6; j < 9; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 6; j < 9; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 12; j < 16; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 12; j < 16; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 18; j < 19; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 18; j < 19; j++){
             Map1[i][j].blockNumber = Block::brick;
-        for (int j = 21; j < WIDTH - 3; j++)
+            positionBlock(Map1[i][j], i, j);
+        }
+        for (int j = 21; j < WIDTH - 3; j++){
             Map1[i][j].blockNumber = Block::brick;
+            positionBlock(Map1[i][j], i, j);
+        }
     }
 }
 
@@ -393,31 +446,59 @@ void Draw() {
     HBRUSH brickBrush = CreateSolidBrush(RGB(128, 15, 0));
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
-            RECT block;
-            block.left = j * demension + shift;
-            block.right = (j + 1) * demension + shift;
-            block.top = i * demension;
-            block.bottom = (i + 1) * demension;
             if (Map1[i][j].blockNumber == Block::border) {
+                RECT block;
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2;
+
                 FillRect(hdc, &block, borderBrush);
                 FrameRect(hdc, &block, blackBrush);
             }
             if (Map1[i][j].blockNumber == Block::brick) {
+                RECT block;
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2 - 8;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2 - 8;
+
                 FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);           
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2 - 8;
+                block.top = Map1[i][j].Position.y1 + 8;
+                block.bottom = Map1[i][j].Position.y2;
+
+                FillRect(hdc, &block, brickBrush);
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1 + 8;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1 + 8;
+                block.bottom = Map1[i][j].Position.y2;
+
+                FillRect(hdc, &block, brickBrush);
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1 + 8;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2 - 8;
+
+                FillRect(hdc, &block, brickBrush);
+                FrameRect(hdc, &block, blackBrush);
             }
         }
     }
 }
 
-void erasing() {
+void gunDraw(HWND hwnd, Tank& player, HBRUSH brush) {
 
 }
 
 void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
-    //const int tankWidth = 16;
-    //const int tankHeight = 16;
-
     // 1. Очищаем только если позиция изменилась
     if (player.position.x1 != player.tempPosition.x1 ||
         player.position.y1 != player.tempPosition.y1) {
@@ -431,6 +512,7 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
             player.tempPosition.x2 + 1,
             player.tempPosition.y2 + 1);
 
+        MoveToEx(hdc, player.position.x1 + 8, player.position.y1 + 8, NULL);
         SelectObject(hdc, oldPen);
         SelectObject(hdc, oldBrush);
     }
@@ -445,8 +527,14 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
         player.position.x2,
         player.position.y2);
 
+    Rectangle(hdc,
+        player.position.x1 + 4,
+        player.position.y1 + 4,
+        player.position.x2 - 4,
+        player.position.y2 - 4);
+    MoveToEx(hdc, player.position.x1 + 8, player.position.y1 + 8, NULL);
+
     // 3. Восстанавливаем контекст
     SelectObject(hdc, oldBrush);
     SelectObject(hdc, oldPen);
 }
-
