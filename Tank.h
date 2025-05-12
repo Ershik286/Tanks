@@ -14,6 +14,8 @@ public:
     Position position;
     Position tempPosition;
 
+    int blockPositionX;
+    int blockPositionY;
     static const int Up = 0;
     static const int Right = 1;
     static const int Down = 2;
