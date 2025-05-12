@@ -13,11 +13,15 @@ public:
 	static const int foliage = 4;
 	static const int base = 5;
 
-private:
 	struct position {
-		int x;
-		int y;
+		int x1;
+		int y1;
+		int x2;
+		int y2;
 	};
+
+	position Position;
+private:
 	int endurance;
 };
 
