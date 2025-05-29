@@ -1,11 +1,14 @@
 #pragma once
+#include <Windows.h>
 class Block{
 public:
+	Block();
 
-	void damage(int damage);
-	void initialization(int y, int x);
+	void damage(int damage, HWND hwnd);
+	void initialization(int type);
+	void positionBlock(int i, int j);
+	int getNumberBlock();
 
-	int blockNumber;
 	static const int emptiness = 0;
 	static const int border = 1;
 	static const int brick = 2;
@@ -22,6 +25,7 @@ public:
 
 	position Position;
 private:
+	int blockNumber;
 	int endurance;
 };
 
