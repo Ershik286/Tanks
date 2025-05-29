@@ -1,40 +1,63 @@
 #include "Block.h"
 #include <iostream>
+#include <Windows.h>
 
 using namespace std;
 
-void Block::initialization(int y, int x){
+Block::Block(){}
+
+void Block::initialization(int type){
+	this->blockNumber = type;
 	switch (blockNumber)
 	{
 	case border:
-		endurance = INT_MAX;
+		this->endurance = INT_MAX;
 		break;
 	case brick:
-		endurance = 50;
+		this->endurance = 30;
 		break;
 	case whiteBrick:
-		endurance = INT_MAX;
+		this->endurance = INT_MAX;
 		break;
 	case foliage:
-		endurance = INT_MAX;
+		this->endurance = INT_MAX;
 		break;
 	case base:
-		endurance = 250;
+		this->endurance = 250;
 		break;
 	case emptiness:
-		endurance = INT_MAX;
+		this->endurance = INT_MAX;
 		break;
 	default:
 		break;
 	}
 }
 
-void Block::damage(int damage) {
+void Block::positionBlock(int i, int j) {
+	Position.x1 = j * 16;
+	Position.y1 = i * 16;
+	Position.x2 = (j + 1) * 16;
+	Position.y2 = (i + 1) * 16;
+}
+
+int Block::getNumberBlock(){
+	return blockNumber;
+}
+
+void Block::damage(int damage, HWND hwnd) {
 	if (blockNumber == brick || blockNumber == base) {
 		endurance -= damage;
 		if (endurance <= 0) {
-			blockNumber = emptiness;
+			this->blockNumber = emptiness;
 			endurance = INT_MAX;
+			RECT areaBlockNull;
+			areaBlockNull.left = Position.x1;
+			areaBlockNull.right = Position.x2;
+			areaBlockNull.top = Position.y1;
+			areaBlockNull.bottom = Position.y2;
+			InvalidateRect(hwnd, &areaBlockNull, TRUE);
 		}
 	}
 }
+
+
