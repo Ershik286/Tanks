@@ -78,7 +78,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         //size Window
         CW_USEDEFAULT, CW_USEDEFAULT, 495, 551,
 
-        NULL,       // Parent window    
+        NULL,       // Parent window
         NULL,       // Menu
         hInstance,  // Instance handle
         NULL        // Additional application data
@@ -111,13 +111,13 @@ RECT oldUnitRect;
 void ClearBackGround(HDC hdc, HWND hwnd, RECT rect);
 void createTank(Tank& player, int x1, int y1, int x2, int y2);
 
-Tank* players = new Tank[2];
+vector<Tank> players(2);
 
 /*Function*/
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static int sX, sY;
-    static Tank playerOne, playerTwo;
+    //static RECT updateRect = { 0, 0, 0, 0 };
     switch (uMsg) {
     case WM_SIZE:
         sX = LOWORD(lParam);
@@ -125,8 +125,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         break; // Add break here
 
     case WM_CREATE:
-        createTank(playerOne, 16 * 16 + shift, 28 * 16 + shift, 16 * 17 + shift, 29 * 16 + shift); // Зеленый танк внизу
-        createTank(playerTwo, 16 * 16 + shift, 2 * 16 + shift, 17 * 16 + shift, 3 * 16 + shift);  // Красный танк вверху
+        createTank(players[0], 16 * 16 + shift, 28 * 16 + shift, 16 * 17 + shift, 29 * 16 + shift); // Зеленый танк внизу
+        createTank(players[1], 16 * 16 + shift, 2 * 16 + shift, 17 * 16 + shift, 3 * 16 + shift);  // Красный танк вверху
         createOneLevel();
         SetTimer(hwnd, TIMER_ONE_PLAYER_ID, TIMER_INTERVAL, NULL);
         SetTimer(hwnd, TIMER_TWO_PLAYER_ID, TIMER_INTERVAL, NULL);
@@ -139,16 +139,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         Draw();
 
         // Затем рисуем танки
-        drawUnit(hwnd, playerOne, greenBrush);
-        drawUnit(hwnd, playerTwo, redBrush);
+        drawUnit(hwnd, players[0], greenBrush);
+        drawUnit(hwnd, players[1], redBrush);
 
         // Рисуем пули первого игрока
-        for (auto& bullet : playerOne.GetBullets()) {
+        for (auto& bullet : players[0].GetBullets()) {
             bullet.Draw(hdc);
         }
 
         // Рисуем пули второго игрока
-        for (auto& bullet : playerTwo.GetBullets()) {
+        for (auto& bullet : players[1].GetBullets()) {
             bullet.Draw(hdc);
         }
 
@@ -167,157 +167,149 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         int yPos = HIWORD(lParam);
         break;
     }
-    case WM_TIMER:
+    case WM_TIMER: {
+        RECT updateRect = { 0, 0, 0, 0 }; // Начальная область для перерисовки
+
         if (wParam == TIMER_ONE_PLAYER_ID) {
-            RECT oldRect = GetUnitRect(playerOne);
-            playerOne.movement(Map1);
+            // Сохраняем старую позицию танка
+            RECT oldTankRect = GetUnitRect(players[0]);
 
-            RECT newRectOne = GetUnitRect(playerOne);
+            // Обновляем позицию танка
+            players[0].movement(Map1, players);
 
-            RECT updateRectOne;
-            UnionRect(&updateRectOne, &oldRect, &newRectOne);
+            // Добавляем старую и новую позицию танка в область перерисовки
+            RECT newTankRect = GetUnitRect(players[0]);
+            UnionRect(&updateRect, &oldTankRect, &newTankRect);
 
-            for (size_t i = 0; i < playerOne.GetBullets().size(); ) {
-                playerOne.GetBullets()[i].Move(Map1, hwnd);
-                RECT bulletRect = playerOne.GetBullets()[i].GetRect(); //Сохраняем позицию до удаления
-                UnionRect(&updateRectOne, &updateRectOne, &bulletRect);
-                if (!playerOne.GetBullets()[i].IsAlive()) {
-                    playerOne.GetBullets().erase(playerOne.GetBullets().begin() + i);
+            // Обработка пуль
+            for (size_t i = 0; i < players[0].GetBullets().size(); ) {
+                Bullet& bullet = players[0].GetBullets()[i];
+                RECT oldBulletRect = bullet.GetRect();
+                bullet.Move(Map1, hwnd, players);
+                RECT newBulletRect = bullet.GetRect();
+
+                // Добавляем старую и новую позицию пули в область перерисовки
+                UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                UnionRect(&updateRect, &updateRect, &newBulletRect);
+
+                if (!bullet.IsAlive()) {
+                    // Добавляем область пули в updateRect перед удалением
+                    UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                    players[0].GetBullets().erase(players[0].GetBullets().begin() + i);
                 }
                 else {
-                    playerOne.GetBullets()[i].Draw(hdc);
-                    ++i;
+                    i++;
                 }
             }
-            InvalidateRect(hwnd, &updateRectOne, FALSE);
         }
+
         if (wParam == TIMER_TWO_PLAYER_ID) {
-            RECT oldRect = GetUnitRect(playerTwo);
-            playerTwo.movement(Map1);
-            RECT newRectTwo = GetUnitRect(playerTwo);
+            // Сохраняем старую позицию танка
+            RECT oldTankRect = GetUnitRect(players[1]);
 
-            RECT updateRectTwo;
-            UnionRect(&updateRectTwo, &oldRect, &newRectTwo);
+            // Обновляем позицию танка
+            players[1].movement(Map1, players);
 
-            for (size_t i = 0; i < playerTwo.GetBullets().size(); ) {
-                playerTwo.GetBullets()[i].Move(Map1, hwnd);
-                RECT bulletRect = playerTwo.GetBullets()[i].GetRect();
-                UnionRect(&updateRectTwo, &updateRectTwo, &bulletRect);
-                if (!playerTwo.GetBullets()[i].IsAlive()) {
-                    playerTwo.GetBullets().erase(playerTwo.GetBullets().begin() + i);
+            // Добавляем старую и новую позицию танка в область перерисовки
+            RECT newTankRect = GetUnitRect(players[1]);
+            UnionRect(&updateRect, &updateRect, &oldTankRect);
+            UnionRect(&updateRect, &updateRect, &newTankRect);
+
+            // Обработка пуль
+            for (size_t i = 0; i < players[1].GetBullets().size(); ) {
+                Bullet& bullet = players[1].GetBullets()[i];
+                RECT oldBulletRect = bullet.GetRect();
+                bullet.Move(Map1, hwnd, players);
+                RECT newBulletRect = bullet.GetRect();
+
+                UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                UnionRect(&updateRect, &updateRect, &newBulletRect);
+
+                if (!bullet.IsAlive()) {
+                    UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                    players[1].GetBullets().erase(players[1].GetBullets().begin() + i);
                 }
                 else {
-                    playerTwo.GetBullets()[i].Draw(hdc);
-                    ++i;
+                    i++;
                 }
             }
-            InvalidateRect(hwnd, &updateRectTwo, FALSE);
         }
-        break;
 
+        InvalidateRect(hwnd, &updateRect, FALSE);
+        break;
+    }
     case WM_KEYDOWN: {
         switch (wParam) {
         case 'W':
-            playerOne.moveUp = true;
-            playerOne.moveDown = false;
-            playerOne.moveLeft = false;
-            playerOne.moveRight = false;
-            playerOne.SetAngle(90); //смотрим вверх
+            players[0].moveUp = true;
+            players[0].SetAngle(90); // Угол для движения вверх
             break;
         case 'A':
-            playerOne.moveLeft = true;
-            playerOne.moveDown = false;
-            playerOne.moveUp = false;
-            playerOne.moveRight = false;
-            playerOne.SetAngle(180); //смотрим влево
+            players[0].moveLeft = true;
+            players[0].SetAngle(180); // Угол для движения влево
             break;
         case 'S':
-            playerOne.moveDown = true;
-            playerOne.moveUp = false;
-            playerOne.moveLeft = false;
-            playerOne.moveRight = false;
-            playerOne.SetAngle(270); //смотрим вниз
+            players[0].moveDown = true;
+            players[0].SetAngle(270); // Угол для движения вниз
             break;
         case 'D':
-            playerOne.moveRight = true;
-            playerOne.moveDown = false;
-            playerOne.moveUp = false;
-            playerOne.moveLeft = false;
-            playerOne.SetAngle(0); //смотрим вправо
+            players[0].moveRight = true;
+            players[0].SetAngle(0); // Угол для движения вправо
             break;
         case VK_UP:
-            playerTwo.moveUp = true;
-            playerTwo.moveDown = false;
-            playerTwo.moveLeft = false;
-            playerTwo.moveRight = false;
-            playerTwo.SetAngle(90); //смотрим вверх
+            players[1].moveUp = true;
+            players[1].SetAngle(90);
             break;
         case VK_DOWN:
-            playerTwo.moveDown = true;
-            playerTwo.moveUp = false;
-            playerTwo.moveLeft = false;
-            playerTwo.moveRight = false;
-            playerTwo.SetAngle(270); //смотрим вверх
+            players[1].moveDown = true;
+            players[1].SetAngle(270);
             break;
         case VK_LEFT:
-            playerTwo.moveLeft = true;
-            playerTwo.moveDown = false;
-            playerTwo.moveUp = false;
-            playerTwo.moveRight = false;
-            playerTwo.SetAngle(180); //смотрим вверх
+            players[1].moveLeft = true;
+            players[1].SetAngle(180);
             break;
         case VK_RIGHT:
-            playerTwo.moveRight = true;
-            playerTwo.moveDown = false;
-            playerTwo.moveUp = false;
-            playerTwo.moveLeft = false;
-            playerTwo.SetAngle(0); //смотрим вверх
+            players[1].moveRight = true;
+            players[1].SetAngle(0);
             break;
-        case VK_SPACE: {
-            playerOne.Shoot(Map1); // Стрельба по пробелу
+        case VK_SPACE: // Стрельба для первого игрока
+            players[0].Shoot(Map1);
             break;
-        }
-        case VK_SHIFT: {
-            playerTwo.Shoot(Map1); // Стрельба по правому шифту
+        case VK_SHIFT: // Стрельба для второго игрока
+            players[1].Shoot(Map1);
             break;
-        }
-
         default:
             break;
         }
-        // Запрос на перерисовку только области юнита
-        RECT updateRect1 = GetUnitRect(playerOne);
-        RECT updateRect2 = GetUnitRect(playerTwo);
-        UpdateWindow(hwnd); // Добавьте эту строку
         break;
     }
     case WM_KEYUP: {
         switch (wParam)
         {
         case 'W':
-            playerOne.moveUp = false;
+            players[0].moveUp = false;
             break;
         case 'A':
-            playerOne.moveLeft = false;
+            players[0].moveLeft = false;
             break;
         case 'S':
-            playerOne.moveDown = false;
+            players[0].moveDown = false;
             break;
         case 'D':
-            playerOne.moveRight = false;
+            players[0].moveRight = false;
             break;
         case VK_UP:
-            playerTwo.moveUp = false;
+            players[1].moveUp = false;
             break;
         case VK_DOWN:
-            playerTwo.moveDown = false;
+            players[1].moveDown = false;
             break;
 
         case VK_LEFT:
-            playerTwo.moveLeft = false;
+            players[1].moveLeft = false;
             break;
         case VK_RIGHT:
-            playerTwo.moveRight = false;
+            players[1].moveRight = false;
             break;
 
         default:
@@ -336,7 +328,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return 0;
 }
 
-void createTank(Tank &player, int x1, int y1, int x2, int y2) {
+void createTank(Tank& player, int x1, int y1, int x2, int y2) {
     player.position.x1 = x1;
     player.position.y1 = y1;
     player.position.x2 = x2;
@@ -584,6 +576,7 @@ void Draw() {
 
 void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
     // 1. Очищаем предыдущее положение (и танк, и пушку)
+    if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1)
     {
         HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, fieldBrush);
         HPEN oldPen = (HPEN)SelectObject(hdc, GetStockObject(NULL_PEN));
@@ -620,7 +613,6 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
     // 3. Рисуем пушку
     int centerX = (player.position.x1 + player.position.x2) / 2;
     int centerY = (player.position.y1 + player.position.y2) / 2;
-
     double angleRad = player.GetAngle() * M_PI / 180.0;
     int gunLength = 7;
     int gunEndX = centerX + static_cast<int>(gunLength * cos(angleRad));
