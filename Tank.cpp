@@ -1,27 +1,34 @@
 #include "Tank.h"
 #include "Block.h"
+#include "Bullet.h"
 #include <iostream>
+#include <vector>
+#include <cmath>
+#include <Windows.h>
 
 using namespace std;
 
-Tank::Tank() : health(100), damage(10), speed (5){
+#define M_PI 3.14
+
+Tank::Tank() : health(100), damage(10), speed(4), angle(90) {
     moveUp = moveDown = moveLeft = moveRight = false;
     position.x1 = position.y1 = -100; // Начальная позиция вне экрана
     position.x2 = position.y2 = -100 + 16; // Начальная позиция вне экрана
     tempPosition = position;
+    tempAngle = 0;
     blockPositionX = 0; //заготовка
     blockPositionY = 0;
+    live = true;
 }
 
-void Tank::movement(Block Map[HEIGHT][WIDTH]) {
-
+void Tank::movement(Block Map[HEIGHT][WIDTH], vector<Tank>& tanks) { // Передаем вектор танков
     tempPosition = position;
 
     if (moveUp && position.y1 - speed >= 0) {
         position.y1 -= speed;
         position.y2 -= speed;
     }
-    if (moveDown && position.y1 + speed + 16 <= HEIGHT * 16){
+    if (moveDown && position.y1 + speed + 16 <= HEIGHT * 16) {
         position.y1 += speed;
         position.y2 += speed;
     }
@@ -29,50 +36,101 @@ void Tank::movement(Block Map[HEIGHT][WIDTH]) {
         position.x1 -= speed;
         position.x2 -= speed;
     }
-    if (moveRight && position.x1 + speed + 16 <= WIDTH * 16){
+    if (moveRight && position.x1 + speed + 16 <= WIDTH * 16) {
         position.x1 += speed;
         position.x2 += speed;
     }
     if (checkMove(position, Map)) {
         position = tempPosition;
     }
+
+    // Проверка на столкновение с другими танками
+    for (Tank& otherTank : tanks) {
+        if (this != &otherTank) { // Не проверяем столкновение с самим собой
+            if (isColliding(position, otherTank.position)) {
+                position = tempPosition; // Откатываем движение, если есть столкновение
+                break; // Прерываем цикл, если столкновение уже обнаружено
+            }
+        }
+    }
+}
+
+bool Tank::isColliding(Position pos1, Position pos2) const {
+    return !(pos1.x2 < pos2.x1 || pos1.x1 > pos2.x2 || pos1.y2 < pos2.y1 || pos1.y1 > pos2.y2);
 }
 
 bool Tank::checkMove(Position pos, Block Map[HEIGHT][WIDTH]) {
-    // Проверяем все 4 угла танка + центр
+    const int buffer = 2; // Например, 2 пикселя
+
     const pair<int, int> checkPoints[] = {
-        {pos.x1, pos.y1},     // левый верхний угол
-        {pos.x2, pos.y1},     // правый верхний угол
-        {pos.x1, pos.y2},     // левый нижний угол
-        {pos.x2, pos.y2},     // правый нижний угол
-        {(pos.x1 + pos.x2) / 2, (pos.y1 + pos.y2) / 2}  // центр
+        {pos.x1 + buffer, pos.y1 + buffer},
+        {pos.x2 - buffer, pos.y1 + buffer},
+        {pos.x1 + buffer, pos.y2 - buffer},
+        {pos.x2 - buffer, pos.y2 - buffer},
+        {(pos.x1 + pos.x2) / 2, (pos.y1 + pos.y2) / 2}
     };
 
     for (const auto& point : checkPoints) {
         int x = point.first;
         int y = point.second;
 
-        // Переводим координаты в блоки
         int blockX = x / 16;
         int blockY = y / 16;
 
-        // Проверяем границы массива
         if (blockX < 0 || blockX >= WIDTH || blockY < 0 || blockY >= HEIGHT) {
-            return true; // Считаем выход за границы непроходимым
+            return true;
         }
 
-        // Проверяем тип блока
-        int blockType = Map[blockY][blockX].blockNumber;
+        int blockType = Map[blockY][blockX].getNumberBlock();
         if (blockType != Block::emptiness && blockType != Block::foliage) {
-            return true; // Столкновение с непроходимым блоком
+            return true;
         }
     }
 
-    return false; // Все проверяемые точки проходимы
+    return false;
 }
 
-void Tank::shoot() {
+vector<Bullet>& Tank::GetBullets() {
+    return bullets;
+}
 
+void Tank::Shoot(Block Map[HEIGHT][WIDTH]) {
+    if (bullets.size() == 3) {
+        return;
+    }
+    int startX = position.x1 + (position.x2 - position.x1) / 2;
+    int startY = position.y1 + (position.y2 - position.y1) / 2;
+
+    // Смещаем пулю немного вперед, чтобы избежать столкновения с самим собой
+    double angleRad = angle * M_PI / 180.0;
+    int offsetX = static_cast<int>(10 * cos(angleRad)); //смещение по X
+    int offsetY = static_cast<int>(10 * sin(angleRad)); //смещение по Y
+    bullets.emplace_back(startX + offsetX, startY - offsetY, angle, 10);
+}
+
+bool Tank::damageThis(int damage) {
+    if (!live) return true; // Уже уничтожен
+
+    health -= damage;
+    if (health <= 0) {
+        health = 0;
+        this->live = false;
+        return true;
+    }
+    return false;
+}
+
+void Tank::SetAngle(int NewAngle) {
+    this->tempAngle = angle;
+    this->angle = NewAngle;
+}
+
+int Tank::GetAngle() const {
+    return angle;
+}
+
+int Tank::GetTempAngle() const {
+    return tempAngle;
 }
 
 void Tank::changeOfDirection() {
@@ -81,4 +139,16 @@ void Tank::changeOfDirection() {
 
 void Tank::treatment() {
 
+}
+
+int Tank::GetHealth() const {
+    return health;
+}
+
+void Tank::SetHealth(int newHealth) {
+    this->health = newHealth;
+}
+
+bool Tank::isAlive(){
+    return live;
 }
