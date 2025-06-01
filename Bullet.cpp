@@ -2,39 +2,51 @@
 #include "Block.h"
 #include "Tank.h"
 #include <cmath>
+#include <Windows.h>
+#include <iostream>
+#include <WinUser.h>
+#pragma comment(lib, "User32.lib")
 
 #define M_PI 3.14
 
 Bullet::Bullet(int x, int y, int angle, int speed)
-    : x(x), y(y), angle(angle), speed(speed), lifetime(10000), isAlive(true) {
-    this->tempX = x;
-    this->tempY = y;
+    : x(x), y(y), angle(angle), speed(speed), lifetime(10000), isAlive(true),
+    tempX(x), tempY(y) {
 }
 
 Bullet::~Bullet() {}
 
-// Реализация move-конструктора
 Bullet::Bullet(Bullet&& other) noexcept
-    : x(other.x), y(other.y), angle(other.angle), speed(other.speed),
-    lifetime(other.lifetime), isAlive(other.isAlive) {
+    : x(other.x),
+    y(other.y),
+    angle(other.angle),
+    speed(other.speed),
+    lifetime(other.lifetime),
+    isAlive(other.isAlive),
+    tempX(other.tempX),
+    tempY(other.tempY)
+{
 }
 
-// Реализация move-оператора присваивания
-Bullet& Bullet::operator=(Bullet&& other) noexcept {
+Bullet& Bullet::operator=(Bullet&& other) noexcept
+{
     if (this != &other) {
         x = other.x;
         y = other.y;
+        tempX = other.tempX;
+        tempY = other.tempY;
         angle = other.angle;
         speed = other.speed;
         lifetime = other.lifetime;
         isAlive = other.isAlive;
     }
-    return *this;
+    return *this;  // Добавлен возврат значения
 }
 
 void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks) {
     if (!isAlive) return;
 
+    // Сохраняем предыдущую позицию
     this->tempX = x;
     this->tempY = y;
 
@@ -70,6 +82,7 @@ void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks)
         }
     }
 
+    int countTank = 0;
     // Проверка столкновений с танками
     for (Tank& tank : tanks) {
         if (tank.GetHealth() <= 0) continue;
@@ -78,11 +91,13 @@ void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks)
         if (isColliding(bulletRect, tankRect)) {
             bool isDestroyed = tank.damageThis(10);
             this->isAlive = false;
+
             if (isDestroyed) {
-                MessageBox(hwnd, L"Танк уничтожен!", L"Сообщение", MB_OK);
+                std::wstring winText = (countTank % 2 != 0) ? L"Зеленый игрок победил!" : L"Красный игрок победил!";
             }
             return;
         }
+        countTank++;
     }
 
     this->lifetime--;
@@ -96,20 +111,18 @@ bool Bullet::IsAlive() {
 }
 
 void Bullet::Draw(HDC hdc) {
-    // Очистка предыдущей позиции всегда, если пуля мертва или переместилась
-    if (!isAlive || tempX != x || tempY != y) {
-        RECT clearRect = {
-            tempX - BULLET_SIZE / 2,
-            tempY - BULLET_SIZE / 2,
-            tempX + BULLET_SIZE / 2,
-            tempY + BULLET_SIZE / 2
-        };
-        HBRUSH clearingBrush = CreateSolidBrush(RGB(255, 255, 255));
-        FillRect(hdc, &clearRect, clearingBrush);
-        DeleteObject(clearingBrush);
-    }
+    // Очищаем предыдущую позицию
+    RECT clearRect = {
+        tempX - BULLET_SIZE / 2,
+        tempY - BULLET_SIZE / 2,
+        tempX + BULLET_SIZE / 2,
+        tempY + BULLET_SIZE / 2
+    };
+    HBRUSH clearingBrush = CreateSolidBrush(RGB(255, 255, 255));
+    FillRect(hdc, &clearRect, clearingBrush);
+    DeleteObject(clearingBrush);
 
-    // Рисование пули только если она жива
+    // Рисуем новую позицию
     if (isAlive) {
         HBRUSH brush = CreateSolidBrush(RGB(0, 0, 0));
         HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, brush);
@@ -132,10 +145,35 @@ RECT Bullet::GetRect() const {
     return bulletRect;
 }
 
-void Bullet::togleIsAlive(bool alive){
+void Bullet::togleIsAlive(bool alive) {
     this->isAlive = alive;
 }
 
 bool Bullet::isColliding(RECT rect1, RECT rect2) const {
     return !(rect1.right < rect2.left || rect1.left > rect2.right || rect1.bottom < rect2.top || rect1.top > rect2.bottom);
+}
+
+void Bullet::clearDraw(HDC hdc) {
+    RECT clearRect = {
+    tempX - BULLET_SIZE / 2,
+    tempY - BULLET_SIZE / 2,
+    tempX + BULLET_SIZE / 2,
+    tempY + BULLET_SIZE / 2
+    };
+    HBRUSH clearingBrush = CreateSolidBrush(RGB(255, 255, 255));
+    FillRect(hdc, &clearRect, clearingBrush);
+    DeleteObject(clearingBrush);
+}
+
+void Bullet::DrawWinMessage(HWND hwnd, const std::wstring& message) {
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+    RECT rect = { 50, 50, 400, 200 }; // Область вывода
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(255, 0, 0)); // Белый текст
+    DrawText(hdc, message.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
+
+    EndPaint(hwnd, &ps);
+    InvalidateRect(hwnd, &rect, TRUE); // Обновляем экран
 }
