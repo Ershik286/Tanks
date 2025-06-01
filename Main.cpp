@@ -112,6 +112,7 @@ void ClearBackGround(HDC hdc, HWND hwnd, RECT rect);
 void createTank(Tank& player, int x1, int y1, int x2, int y2);
 
 vector<Tank> players(2);
+vector<Bullet> depthBullet{};
 
 /*Function*/
 
@@ -141,6 +142,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         // Затем рисуем танки
         drawUnit(hwnd, players[0], greenBrush);
         drawUnit(hwnd, players[1], redBrush);
+
+        for (auto& bullet : depthBullet) {
+            bullet.Draw(hdc);
+        }
+
+        depthBullet.clear();
 
         // Рисуем пули первого игрока
         for (auto& bullet : players[0].GetBullets()) {
@@ -179,25 +186,25 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
             // Добавляем старую и новую позицию танка в область перерисовки
             RECT newTankRect = GetUnitRect(players[0]);
-            UnionRect(&updateRect, &oldTankRect, &newTankRect);
+            UnionRect(&updateRect, &updateRect, &oldTankRect);
+            UnionRect(&updateRect, &updateRect, &newTankRect);
 
             // Обработка пуль
             for (size_t i = 0; i < players[0].GetBullets().size(); ) {
                 Bullet& bullet = players[0].GetBullets()[i];
                 RECT oldBulletRect = bullet.GetRect();
-                bullet.Move(Map1, hwnd, players);
-                RECT newBulletRect = bullet.GetRect();
 
-                // Добавляем старую и новую позицию пули в область перерисовки
-                UnionRect(&updateRect, &updateRect, &oldBulletRect);
-                UnionRect(&updateRect, &updateRect, &newBulletRect);
+                bullet.Move(Map1, hwnd, players);
 
                 if (!bullet.IsAlive()) {
-                    // Добавляем область пули в updateRect перед удалением
                     UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                    depthBullet.push_back(std::move(bullet));
                     players[0].GetBullets().erase(players[0].GetBullets().begin() + i);
                 }
                 else {
+                    RECT newBulletRect = bullet.GetRect();
+                    UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                    UnionRect(&updateRect, &updateRect, &newBulletRect);
                     i++;
                 }
             }
@@ -208,7 +215,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             RECT oldTankRect = GetUnitRect(players[1]);
 
             // Обновляем позицию танка
-            players[1].movement(Map1, players);
+            if (players[1].isAlive()) {
+                players[1].movement(Map1, players);
+            }
 
             // Добавляем старую и новую позицию танка в область перерисовки
             RECT newTankRect = GetUnitRect(players[1]);
@@ -227,6 +236,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
                 if (!bullet.IsAlive()) {
                     UnionRect(&updateRect, &updateRect, &oldBulletRect);
+                    depthBullet.push_back(std::move(bullet));
                     players[1].GetBullets().erase(players[1].GetBullets().begin() + i);
                 }
                 else {
@@ -242,33 +252,57 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         switch (wParam) {
         case 'W':
             players[0].moveUp = true;
+            players[0].moveDown = false;
+            players[0].moveLeft = false;
+            players[0].moveRight = false;
             players[0].SetAngle(90); // Угол для движения вверх
             break;
         case 'A':
+            players[0].moveUp = false;
+            players[0].moveDown = false;
             players[0].moveLeft = true;
+            players[0].moveRight = false;
             players[0].SetAngle(180); // Угол для движения влево
             break;
         case 'S':
+            players[0].moveUp = false;
             players[0].moveDown = true;
+            players[0].moveLeft = false;
+            players[0].moveRight = false;
             players[0].SetAngle(270); // Угол для движения вниз
             break;
         case 'D':
+            players[0].moveUp = false;
+            players[0].moveDown = false;
+            players[0].moveLeft = false;
             players[0].moveRight = true;
             players[0].SetAngle(0); // Угол для движения вправо
             break;
         case VK_UP:
             players[1].moveUp = true;
+            players[1].moveDown = false;
+            players[1].moveLeft = false;
+            players[1].moveRight = false;
             players[1].SetAngle(90);
             break;
         case VK_DOWN:
+            players[1].moveUp = false;
             players[1].moveDown = true;
+            players[1].moveLeft = false;
+            players[1].moveRight = false;
             players[1].SetAngle(270);
             break;
         case VK_LEFT:
+            players[1].moveUp = false;
+            players[1].moveDown = false;
             players[1].moveLeft = true;
+            players[1].moveRight = false;
             players[1].SetAngle(180);
             break;
         case VK_RIGHT:
+            players[1].moveUp = false;
+            players[1].moveDown = false;
+            players[1].moveLeft = false;
             players[1].moveRight = true;
             players[1].SetAngle(0);
             break;
@@ -413,7 +447,9 @@ void createOneLevel() {
         Map1[5][17].initialization(Block::brick);
         Map1[5][17].positionBlock(5, 17);
 
-        Map1[HEIGHT - 2][14].initialization(Block::base);
+        //Map1[HEIGHT - 2][14].initialization(Block::base);
+
+        Map1[HEIGHT - 2][14].initialization(Block::emptiness);
         Map1[HEIGHT - 2][14].positionBlock(HEIGHT - 2, 14);
 
         for (int i = 10; i < 12; i++) {
@@ -575,6 +611,7 @@ void Draw() {
 }
 
 void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
+    HBRUSH blackBrush = CreateSolidBrush(RGB(60, 60, 60));
     // 1. Очищаем предыдущее положение (и танк, и пушку)
     if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1)
     {
@@ -595,6 +632,10 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
     // 2. Рисуем танк
     HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, brush);
     HPEN oldPen = (HPEN)SelectObject(hdc, tankPen);
+
+    if (!player.isAlive()) {
+        oldBrush = (HBRUSH)SelectObject(hdc, blackBrush);
+    }
 
     // Корпус танка
     Rectangle(hdc,
