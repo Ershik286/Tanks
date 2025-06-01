@@ -95,16 +95,15 @@ vector<Bullet>& Tank::GetBullets() {
 }
 
 void Tank::Shoot(Block Map[HEIGHT][WIDTH]) {
-    if (bullets.size() == 3) {
-        return;
-    }
+    if (bullets.size() >= 3) return;
+
     int startX = position.x1 + (position.x2 - position.x1) / 2;
     int startY = position.y1 + (position.y2 - position.y1) / 2;
 
-    // Смещаем пулю немного вперед, чтобы избежать столкновения с самим собой
     double angleRad = angle * M_PI / 180.0;
-    int offsetX = static_cast<int>(10 * cos(angleRad)); //смещение по X
-    int offsetY = static_cast<int>(10 * sin(angleRad)); //смещение по Y
+    int offsetX = static_cast<int>(10 * cos(angleRad));
+    int offsetY = static_cast<int>(10 * sin(angleRad));
+
     bullets.emplace_back(startX + offsetX, startY - offsetY, angle, 10);
 }
 
