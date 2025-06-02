@@ -631,99 +631,68 @@ void createThreeLevel() {
 
 }
 
-void Draw() {
-    HBRUSH borderBrush = CreateSolidBrush(RGB(128, 128, 128));
+void drawStandartBlock(Block block, int type) {
     HBRUSH blackBrush = CreateSolidBrush(RGB(0, 0, 0));
+    HBRUSH borderBrush = CreateSolidBrush(RGB(128, 128, 128));
     HBRUSH brickBrush = CreateSolidBrush(RGB(128, 15, 0));
+
+    RECT blockRect;
+    blockRect.left = block.Position.x1;
+    blockRect.right = block.Position.x2;
+    blockRect.top = block.Position.y1;
+    blockRect.bottom = block.Position.y2;
+    if (type == Block::foliage) {
+        FillRect(hdc, &blockRect, leavesBrush);
+    }
+    if (type == Block::emptiness) {
+        FillRect(hdc, &blockRect, fieldBrush);
+    }
+    if (type == Block::border) {
+        FillRect(hdc, &blockRect, borderBrush);
+        FrameRect(hdc, &blockRect, blackBrush);
+    }
+    if (type == Block::brick) {
+        blockRect;
+        blockRect.left = block.Position.x1;
+        blockRect.right = block.Position.x2 - 8;
+        blockRect.top = block.Position.y1;
+        blockRect.bottom = block.Position.y2 - 8;
+
+        FillRect(hdc, &blockRect, brickBrush);
+        FrameRect(hdc, &blockRect, blackBrush);
+
+        blockRect.left = block.Position.x1;
+        blockRect.right = block.Position.x2 - 8;
+        blockRect.top = block.Position.y1 + 8;
+        blockRect.bottom = block.Position.y2;
+
+        FillRect(hdc, &blockRect, brickBrush);
+        FrameRect(hdc, &blockRect, blackBrush);
+
+        blockRect.left = block.Position.x1 + 8;
+        blockRect.right = block.Position.x2;
+        blockRect.top = block.Position.y1 + 8;
+        blockRect.bottom = block.Position.y2;
+
+        FillRect(hdc, &blockRect, brickBrush);
+        FrameRect(hdc, &blockRect, blackBrush);
+
+        blockRect.left = block.Position.x1 + 8;
+        blockRect.right = block.Position.x2;
+        blockRect.top = block.Position.y1;
+        blockRect.bottom = block.Position.y2 - 8;
+
+        FillRect(hdc, &blockRect, brickBrush);
+        FrameRect(hdc, &blockRect, blackBrush);
+    }
+}
+
+void Draw() {
+    HBRUSH blackBrush = CreateSolidBrush(RGB(0, 0, 0));
+
     for (int i = 0; i < HEIGHT; i++) {
         for (int j = 0; j < WIDTH; j++) {
-            if (Map1[i][j].getNumberBlock() == Block::border) {
-                RECT block;
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, borderBrush);
-                FrameRect(hdc, &block, blackBrush);
-            }
-            if (Map1[i][j].getNumberBlock() == Block::brick) {
-                RECT block;
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2 - 8;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2 - 8;
-
-                FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2 - 8;
-                block.top = Map1[i][j].Position.y1 + 8;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1 + 8;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1 + 8;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1 + 8;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2 - 8;
-
-                FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);
-            }
-            if (Map1[i][j].getNumberBlock() == Block::foliage) {
-                RECT block;
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, leavesBrush);
-                FrameRect(hdc, &block, blackBrush);
-                /*RECT block;
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2 - 8;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2 - 8;
-
-                FillRect(hdc, &block, leavesBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1;
-                block.right = Map1[i][j].Position.x2 - 8;
-                block.top = Map1[i][j].Position.y1 + 8;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, leavesBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1 + 8;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1 + 8;
-                block.bottom = Map1[i][j].Position.y2;
-
-                FillRect(hdc, &block, leavesBrush);
-                FrameRect(hdc, &block, blackBrush);
-
-                block.left = Map1[i][j].Position.x1 + 8;
-                block.right = Map1[i][j].Position.x2;
-                block.top = Map1[i][j].Position.y1;
-                block.bottom = Map1[i][j].Position.y2 - 8;
-
-                FillRect(hdc, &block, brickBrush);
-                FrameRect(hdc, &block, blackBrush);*/
-
-            }
+            drawStandartBlock(Map1[i][j], Map1[i][j].getNumberBlock());
         }
     }
 }
@@ -731,17 +700,27 @@ void Draw() {
 void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
     HBRUSH blackBrush = CreateSolidBrush(RGB(60, 60, 60));
     // 1. Очищаем предыдущее положение (и танк, и пушку)
-    if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1)
-    {
+    if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1) {
+
+        int blockX1 = player.tempPosition.x1 / 16;
+        int blockY1 = player.tempPosition.y1 / 16;
+        int blockX2 = player.tempPosition.x2 / 16;
+        int blockY2 = player.tempPosition.y2 / 16;
+
+        // blockX1, blockY1 - верхний левый угол
+        // blockX2, blockY2 - нижний правый угол
+
+        RECT clearRect;
         HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, fieldBrush);
         HPEN oldPen = (HPEN)SelectObject(hdc, GetStockObject(NULL_PEN));
 
         // Очищаем область танка с запасом для пушки
-        Rectangle(hdc,
-            player.tempPosition.x1 - 1,  // Запас для пушки
-            player.tempPosition.y1 - 1,
-            player.tempPosition.x2 + 1,
-            player.tempPosition.y2 + 1);
+        clearRect.left = player.tempPosition.x1 - 1;
+        clearRect.top = player.tempPosition.y1 - 1;
+        clearRect.right = player.tempPosition.x2 + 1;
+        clearRect.bottom = player.tempPosition.y2 + 1;
+        Rectangle(hdc, clearRect.left, clearRect.top, clearRect.right, clearRect.bottom); //  Очищаем область, занимаемую танком
+
 
         SelectObject(hdc, oldPen);
         SelectObject(hdc, oldBrush);
