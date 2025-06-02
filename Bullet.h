@@ -22,14 +22,13 @@ public:
     static const int WIDTH = 30;
     static const int HEIGHT = 32;
 
-    void Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks);
+    void Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int& numberDeath);
     bool IsAlive();
     void Draw(HDC hdc);
     RECT GetRect() const;
     void togleIsAlive(bool alive);
     bool isColliding(RECT rect1, RECT rect2) const;
     void clearDraw(HDC hdc);
-    void DrawWinMessage(HWND hwnd, const std::wstring& message);
 
     int x;
     int y;
