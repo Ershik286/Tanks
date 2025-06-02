@@ -11,7 +11,9 @@ using namespace std;
 #define M_PI 3.14
 
 Tank::Tank() : health(100), damage(10), speed(4), angle(90) {
-    moveUp = moveDown = moveLeft = moveRight = false;
+    for (int i = 0; i < 4; i++)
+        movingVector[i] = 0;
+
     position.x1 = position.y1 = -100; // Начальная позиция вне экрана
     position.x2 = position.y2 = -100 + 16; // Начальная позиция вне экрана
     tempPosition = position;
@@ -24,19 +26,19 @@ Tank::Tank() : health(100), damage(10), speed(4), angle(90) {
 void Tank::movement(Block Map[HEIGHT][WIDTH], vector<Tank>& tanks) { // Передаем вектор танков
     tempPosition = position;
 
-    if (moveUp && position.y1 - speed >= 0) {
+    if (movingVector[1] && position.y1 - speed >= 0) {
         position.y1 -= speed;
         position.y2 -= speed;
     }
-    if (moveDown && position.y1 + speed + 16 <= HEIGHT * 16) {
+    if (movingVector[3] && position.y1 + speed + 16 <= HEIGHT * 16) {
         position.y1 += speed;
         position.y2 += speed;
     }
-    if (moveLeft && position.x1 - speed >= 0) {
+    if (movingVector[2] && position.x1 - speed >= 0) {
         position.x1 -= speed;
         position.x2 -= speed;
     }
-    if (moveRight && position.x1 + speed + 16 <= WIDTH * 16) {
+    if (movingVector[0] && position.x1 + speed + 16 <= WIDTH * 16) {
         position.x1 += speed;
         position.x2 += speed;
     }
@@ -96,6 +98,7 @@ vector<Bullet>& Tank::GetBullets() {
 
 void Tank::Shoot(Block Map[HEIGHT][WIDTH]) {
     if (bullets.size() >= 3) return;
+    if (!isAlive()) return;
 
     int startX = position.x1 + (position.x2 - position.x1) / 2;
     int startY = position.y1 + (position.y2 - position.y1) / 2;
@@ -120,8 +123,15 @@ bool Tank::damageThis(int damage) {
 }
 
 void Tank::SetAngle(int NewAngle) {
+    if (!isAlive()) return;
     this->tempAngle = angle;
     this->angle = NewAngle;
+}
+
+void Tank::setVectorMoving(int massive[4]){
+    for (int i = 0; i < 4; i++) {
+        this->movingVector[i] = massive[i];
+    }
 }
 
 int Tank::GetAngle() const {
@@ -130,14 +140,6 @@ int Tank::GetAngle() const {
 
 int Tank::GetTempAngle() const {
     return tempAngle;
-}
-
-void Tank::changeOfDirection() {
-
-}
-
-void Tank::treatment() {
-
 }
 
 int Tank::GetHealth() const {
