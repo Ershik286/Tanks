@@ -26,31 +26,25 @@ public:
     static const int WIDTH = 30;
     static const int HEIGHT = 32;
 
-    bool moveUp;
-    bool moveDown;
-    bool moveLeft;
-    bool moveRight;
-
     void movement(Block Map[HEIGHT][WIDTH], std::vector<Tank>& tanks); // Добавлено: принимает вектор танков
     void Shoot(Block Map[HEIGHT][WIDTH]);
     bool damageThis(int damage);
     std::vector<Bullet>& GetBullets();
 
     void SetAngle(int angle);
+
+    void setVectorMoving(int[4]);
     int GetAngle() const;
     int GetTempAngle() const;
 
-    void changeOfDirection();
-    void treatment();
-
     bool checkMove(Position pos, Block Map[HEIGHT][WIDTH]);
     bool isColliding(Position pos1, Position pos2) const;
-
     Tank();
 
     int GetHealth() const;
     void SetHealth(int newHealth);
     bool isAlive();
+    int movingVector[4];
 protected:
     std::vector<Bullet> bullets;
     int angle;
