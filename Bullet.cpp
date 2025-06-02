@@ -43,7 +43,7 @@ Bullet& Bullet::operator=(Bullet&& other) noexcept
     return *this;  // Добавлен возврат значения
 }
 
-void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks) {
+void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int& numberDeath) {
     if (!isAlive) return;
 
     // Сохраняем предыдущую позицию
@@ -93,7 +93,8 @@ void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks)
             this->isAlive = false;
 
             if (isDestroyed) {
-                std::wstring winText = (countTank % 2 != 0) ? L"Зеленый игрок победил!" : L"Красный игрок победил!";
+                //std::wstring winText = (countTank % 2 != 0) ? L"Зеленый игрок победил!" : L"Красный игрок победил!";
+                numberDeath = countTank;
             }
             return;
         }
@@ -163,17 +164,4 @@ void Bullet::clearDraw(HDC hdc) {
     HBRUSH clearingBrush = CreateSolidBrush(RGB(255, 255, 255));
     FillRect(hdc, &clearRect, clearingBrush);
     DeleteObject(clearingBrush);
-}
-
-void Bullet::DrawWinMessage(HWND hwnd, const std::wstring& message) {
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-
-    RECT rect = { 50, 50, 400, 200 }; // Область вывода
-    SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(255, 0, 0)); // Белый текст
-    DrawText(hdc, message.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
-
-    EndPaint(hwnd, &ps);
-    InvalidateRect(hwnd, &rect, TRUE); // Обновляем экран
 }
