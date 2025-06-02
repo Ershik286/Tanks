@@ -43,10 +43,24 @@ Block Map1[HEIGHT][WIDTH];
 Block Map2[HEIGHT][WIDTH];
 Block Map3[HEIGHT][WIDTH];
 
+enum class GameState {
+    PLAYING,
+    PLAYER_1_WINS,
+    PLAYER_2_WINS,
+    DRAW
+};
+
+GameState gameState = GameState::PLAYING; // Изначально игра идет
+
 HDC hdc;
 int level = 0;
+int frameCount = 0;
+auto startTime = std::chrono::high_resolution_clock::now();
+double fps = 0.0; // Переменная для хранения FPS
+
 HBRUSH greenBrush = CreateSolidBrush(RGB(0, 255, 0)); // Зеленый танк
 HBRUSH redBrush = CreateSolidBrush(RGB(255, 0, 0));
+HBRUSH leavesBrush = CreateSolidBrush(RGB(50, 135, 50));
 HBRUSH fieldBrush = CreateSolidBrush(RGB(255, 255, 255));
 
 HPEN tankPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Чёрная обводка
@@ -110,9 +124,13 @@ void Draw();
 RECT oldUnitRect;
 void ClearBackGround(HDC hdc, HWND hwnd, RECT rect);
 void createTank(Tank& player, int x1, int y1, int x2, int y2);
+void DrawWinMessage(HWND hwnd, const wstring& message);
 
 vector<Tank> players(2);
 vector<Bullet> depthBullet{};
+vector<int> deapthTanks{};
+
+RECT rect = { 50, 35, 250, 50 }; // Область вывода сообщения о победе
 
 /*Function*/
 
@@ -158,6 +176,40 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         for (auto& bullet : players[1].GetBullets()) {
             bullet.Draw(hdc);
         }
+        //  Отображение сообщения о победе
+        if (gameState != GameState::PLAYING) {
+            wstring message;
+            if (gameState == GameState::PLAYER_1_WINS) {
+                message = L"Победил первый игрок!";
+            }
+            else if (gameState == GameState::PLAYER_2_WINS) {
+                message = L"Победил второй игрок!";
+            }
+            else {
+                message = L"Ничья!";
+            }
+
+            FillRect(hdc, &rect, fieldBrush); // Закрашиваем белым
+
+            SetTextColor(hdc, RGB(0, 0, 0)); // Черный текст
+            SetBkMode(hdc, OPAQUE);
+            DrawText(hdc, message.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
+        }
+
+        //frameCount++;
+
+        //auto currentTime = std::chrono::high_resolution_clock::now();
+        //auto elapsedTime = std::chrono::duration_cast<std::chrono::seconds>(currentTime - startTime).count();
+
+        //if (elapsedTime >= 1) { // Обновляем FPS каждые 1 секунду
+        //    fps = (float)frameCount / elapsedTime; // Теперь fps - double
+        //    frameCount = 0;
+        //    startTime = currentTime;
+        //}
+        //// Вывод FPS в окно
+        //wchar_t fpsText[32];
+        //swprintf_s(fpsText, 32, L"FPS: %.2f", fps);  // Форматируем FPS в строку
+        //TextOutW(hdc, 17, 20, fpsText, (int)wcslen(fpsText)); // Выводим текст в верхнем левом углу
 
         EndPaint(hwnd, &ps);
         break;
@@ -176,6 +228,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     }
     case WM_TIMER: {
         RECT updateRect = { 0, 0, 0, 0 }; // Начальная область для перерисовки
+        int numberTankDeath = 0;
 
         if (wParam == TIMER_ONE_PLAYER_ID) {
             // Сохраняем старую позицию танка
@@ -194,7 +247,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 Bullet& bullet = players[0].GetBullets()[i];
                 RECT oldBulletRect = bullet.GetRect();
 
-                bullet.Move(Map1, hwnd, players);
+                bullet.Move(Map1, hwnd, players, numberTankDeath);
 
                 if (!bullet.IsAlive()) {
                     UnionRect(&updateRect, &updateRect, &oldBulletRect);
@@ -209,7 +262,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 }
             }
         }
-
+        numberTankDeath = 0;
         if (wParam == TIMER_TWO_PLAYER_ID) {
             // Сохраняем старую позицию танка
             RECT oldTankRect = GetUnitRect(players[1]);
@@ -228,7 +281,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             for (size_t i = 0; i < players[1].GetBullets().size(); ) {
                 Bullet& bullet = players[1].GetBullets()[i];
                 RECT oldBulletRect = bullet.GetRect();
-                bullet.Move(Map1, hwnd, players);
+                bullet.Move(Map1, hwnd, players, numberTankDeath);
                 RECT newBulletRect = bullet.GetRect();
 
                 UnionRect(&updateRect, &updateRect, &oldBulletRect);
@@ -245,65 +298,86 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             }
         }
 
+        int numTanksAlive = 0;
+        int winningPlayer = -1; // 0 - player1 wins, 1 - player2 wins
+        if (players[0].isAlive()) {
+            numTanksAlive++;
+            winningPlayer = 1; // Player 1 is alive
+        }
+        if (players[1].isAlive()) {
+            numTanksAlive++;
+            winningPlayer = 2; // Player 2 is alive
+        }
+
+        if (numTanksAlive == 0) {
+            gameState = GameState::DRAW; // Ничья
+            UnionRect(&updateRect, &updateRect, &rect);
+        }
+        else if (numTanksAlive == 1) {
+            if (winningPlayer == 1) {
+                gameState = GameState::PLAYER_1_WINS; // Player 1 победил
+            }
+            else {
+                gameState = GameState::PLAYER_2_WINS; // Player 2 победил
+            }
+            UnionRect(&updateRect, &updateRect, &rect);
+        }
+        else {
+            gameState = GameState::PLAYING; // Игра продолжается
+        }
         InvalidateRect(hwnd, &updateRect, FALSE);
         break;
     }
     case WM_KEYDOWN: {
+        int* tanksMoving{ new int[4] {0, 0, 0, 0} };
+
         switch (wParam) {
         case 'W':
-            players[0].moveUp = true;
-            players[0].moveDown = false;
-            players[0].moveLeft = false;
-            players[0].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[1] = 1;//Up
+            players[0].setVectorMoving(tanksMoving);
             players[0].SetAngle(90); // Угол для движения вверх
             break;
         case 'A':
-            players[0].moveUp = false;
-            players[0].moveDown = false;
-            players[0].moveLeft = true;
-            players[0].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[2] = 1;//Left
+            players[0].setVectorMoving(tanksMoving);
             players[0].SetAngle(180); // Угол для движения влево
             break;
         case 'S':
-            players[0].moveUp = false;
-            players[0].moveDown = true;
-            players[0].moveLeft = false;
-            players[0].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[3] = 1;//Down
+            players[0].setVectorMoving(tanksMoving);
             players[0].SetAngle(270); // Угол для движения вниз
             break;
         case 'D':
-            players[0].moveUp = false;
-            players[0].moveDown = false;
-            players[0].moveLeft = false;
-            players[0].moveRight = true;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[0] = 1;//Right
+            players[0].setVectorMoving(tanksMoving);
             players[0].SetAngle(0); // Угол для движения вправо
             break;
         case VK_UP:
-            players[1].moveUp = true;
-            players[1].moveDown = false;
-            players[1].moveLeft = false;
-            players[1].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[1] = 1;
+            players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(90);
             break;
         case VK_DOWN:
-            players[1].moveUp = false;
-            players[1].moveDown = true;
-            players[1].moveLeft = false;
-            players[1].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[3] = 1;
+            players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(270);
             break;
         case VK_LEFT:
-            players[1].moveUp = false;
-            players[1].moveDown = false;
-            players[1].moveLeft = true;
-            players[1].moveRight = false;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[2] = 1;
+            players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(180);
             break;
         case VK_RIGHT:
-            players[1].moveUp = false;
-            players[1].moveDown = false;
-            players[1].moveLeft = false;
-            players[1].moveRight = true;
+            for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
+            tanksMoving[0] = 1;
+            players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(0);
             break;
         case VK_SPACE: // Стрельба для первого игрока
@@ -316,34 +390,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             break;
         }
         break;
+        delete[] tanksMoving;   
     }
     case WM_KEYUP: {
         switch (wParam)
         {
         case 'W':
-            players[0].moveUp = false;
+            players[0].movingVector[1] = 0;
             break;
         case 'A':
-            players[0].moveLeft = false;
+            players[0].movingVector[2] = 0;
             break;
         case 'S':
-            players[0].moveDown = false;
+            players[0].movingVector[3] = 0;
             break;
         case 'D':
-            players[0].moveRight = false;
+            players[0].movingVector[0] = 0;
             break;
         case VK_UP:
-            players[1].moveUp = false;
+            players[1].movingVector[1] = 0;
             break;
         case VK_DOWN:
-            players[1].moveDown = false;
+            players[1].movingVector[3] = 0;
             break;
 
         case VK_LEFT:
-            players[1].moveLeft = false;
+            players[1].movingVector[2] = 0;
             break;
         case VK_RIGHT:
-            players[1].moveRight = false;
+            players[1].movingVector[0] = 0;
             break;
 
         default:
@@ -606,6 +681,49 @@ void Draw() {
                 FillRect(hdc, &block, brickBrush);
                 FrameRect(hdc, &block, blackBrush);
             }
+            if (Map1[i][j].getNumberBlock() == Block::foliage) {
+                RECT block;
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2;
+
+                FillRect(hdc, &block, leavesBrush);
+                FrameRect(hdc, &block, blackBrush);
+                /*RECT block;
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2 - 8;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2 - 8;
+
+                FillRect(hdc, &block, leavesBrush);
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1;
+                block.right = Map1[i][j].Position.x2 - 8;
+                block.top = Map1[i][j].Position.y1 + 8;
+                block.bottom = Map1[i][j].Position.y2;
+
+                FillRect(hdc, &block, leavesBrush);
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1 + 8;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1 + 8;
+                block.bottom = Map1[i][j].Position.y2;
+
+                FillRect(hdc, &block, leavesBrush);
+                FrameRect(hdc, &block, blackBrush);
+
+                block.left = Map1[i][j].Position.x1 + 8;
+                block.right = Map1[i][j].Position.x2;
+                block.top = Map1[i][j].Position.y1;
+                block.bottom = Map1[i][j].Position.y2 - 8;
+
+                FillRect(hdc, &block, brickBrush);
+                FrameRect(hdc, &block, blackBrush);*/
+
+            }
         }
     }
 }
@@ -675,4 +793,22 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
 
     // Обновляем временную позицию
     player.tempPosition = player.position;
+}
+
+void DrawWinMessage(HWND hwnd, const wstring& message) {
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+    RECT rect = { 50, 50, 400, 200 }; // Область вывода
+    FillRect(hdc, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH)); // Закрашиваем белым
+
+    SetTextColor(hdc, RGB(0, 0, 0)); // Черный текст
+    SetBkMode(hdc, OPAQUE);
+    DrawText(hdc, message.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
+
+    EndPaint(hwnd, &ps);
+}
+
+bool isColliding(Tank::Position pos1, Block::position pos2) {
+    return !(pos1.x2 < pos2.x1 || pos1.x1 > pos2.x2 || pos1.y2 < pos2.y1 || pos1.y1 > pos2.y2);
 }
