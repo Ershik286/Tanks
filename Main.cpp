@@ -124,7 +124,6 @@ void Draw();
 RECT oldUnitRect;
 void ClearBackGround(HDC hdc, HWND hwnd, RECT rect);
 void createTank(Tank& player, int x1, int y1, int x2, int y2);
-void DrawWinMessage(HWND hwnd, const wstring& message);
 
 vector<Tank> players(2);
 vector<Bullet> depthBullet{};
@@ -694,33 +693,43 @@ void Draw() {
     }
 }
 
+void drawBlock(RECT blockRect, Block block) {
+    if (block.getNumberBlock() == Block::foliage) {
+        FillRect(hdc, &blockRect, leavesBrush);
+    }
+    if (block.getNumberBlock() == Block::emptiness) {
+        FillRect(hdc, &blockRect, fieldBrush);
+    }
+}
+
 void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
     HBRUSH blackBrush = CreateSolidBrush(RGB(60, 60, 60));
-    // 1. Очищаем предыдущее положение (и танк, и пушку)
-    if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1) {
 
-        int blockX1 = player.tempPosition.x1 / 16;
+    if (player.position.x1 != player.tempPosition.x1 || player.position.y1 != player.tempPosition.y1) {
+        // 1. Очищаем предыдущую позицию (и танк, и пушку)
+
+        // Определяем, в каких блоках находятся углы старой позиции танка
+        int blockX1 = player.tempPosition.x1 / 16;  // Делим на размер блока (16)
         int blockY1 = player.tempPosition.y1 / 16;
         int blockX2 = player.tempPosition.x2 / 16;
         int blockY2 = player.tempPosition.y2 / 16;
 
-        // blockX1, blockY1 - верхний левый угол
-        // blockX2, blockY2 - нижний правый угол
-
-        RECT clearRect;
-        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, fieldBrush);
-        HPEN oldPen = (HPEN)SelectObject(hdc, GetStockObject(NULL_PEN));
-
         // Очищаем область танка с запасом для пушки
-        clearRect.left = player.tempPosition.x1 - 1;
-        clearRect.top = player.tempPosition.y1 - 1;
-        clearRect.right = player.tempPosition.x2 + 1;
-        clearRect.bottom = player.tempPosition.y2 + 1;
-        Rectangle(hdc, clearRect.left, clearRect.top, clearRect.right, clearRect.bottom); //  Очищаем область, занимаемую танком
+        //  drawBlock(hdc,Map1[blockY1][blockX1]);  // Отрисовываем блок карты
 
+        for (int y = blockY1; y <= blockY2; ++y) {
+            for (int x = blockX1; x <= blockX2; ++x) {
+                if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) { // Проверка границ
+                    RECT blockRect;
+                    blockRect.left = x * 16;
+                    blockRect.top = y * 16;
+                    blockRect.right = blockRect.left + 16;
+                    blockRect.bottom = blockRect.top + 16;
+                    drawBlock(blockRect, Map1[y][x]);
+                }
+            }
+        }
 
-        SelectObject(hdc, oldPen);
-        SelectObject(hdc, oldBrush);
     }
 
     // 2. Рисуем танк
@@ -769,20 +778,6 @@ void drawUnit(HWND hwnd, Tank& player, HBRUSH brush) {
 
     // Обновляем временную позицию
     player.tempPosition = player.position;
-}
-
-void DrawWinMessage(HWND hwnd, const wstring& message) {
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-
-    RECT rect = { 50, 50, 400, 200 }; // Область вывода
-    FillRect(hdc, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH)); // Закрашиваем белым
-
-    SetTextColor(hdc, RGB(0, 0, 0)); // Черный текст
-    SetBkMode(hdc, OPAQUE);
-    DrawText(hdc, message.c_str(), -1, &rect, DT_CENTER | DT_VCENTER | DT_WORDBREAK);
-
-    EndPaint(hwnd, &ps);
 }
 
 bool isColliding(Tank::Position pos1, Block::position pos2) {
