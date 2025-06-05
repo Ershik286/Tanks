@@ -1,12 +1,15 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <Windows.h>
 
 class Block;
 class Bullet;
 
 class Tank {
 public:
+    Tank();
+
     struct Position {
         int y1;
         int x1;
@@ -26,24 +29,23 @@ public:
     static const int WIDTH = 30;
     static const int HEIGHT = 32;
 
-    void movement(Block Map[HEIGHT][WIDTH], std::vector<Tank>& tanks); // Добавлено: принимает вектор танков
+    void movement(Block Map[HEIGHT][WIDTH], std::vector<Tank>& tanks, HWND hwnd); // Добавлено: принимает вектор танков
     void Shoot(Block Map[HEIGHT][WIDTH]);
     bool damageThis(int damage);
     std::vector<Bullet>& GetBullets();
-
     void SetAngle(int angle);
-
     void setVectorMoving(int[4]);
     int GetAngle() const;
     int GetTempAngle() const;
-
-    bool checkMove(Position pos, Block Map[HEIGHT][WIDTH]);
+    bool checkMove(Position pos, Block Map[HEIGHT][WIDTH], HWND hwnd);
     bool isColliding(Position pos1, Position pos2) const;
-    Tank();
-
     int GetHealth() const;
+    int GetTempHealth() const;
     void SetHealth(int newHealth);
     bool isAlive();
+
+    void mainAI();
+
     int movingVector[4];
 protected:
     std::vector<Bullet> bullets;
@@ -51,6 +53,7 @@ protected:
     int tempAngle;
     int speed;
     int health;
+    int tempHealth;
     int damage;
     bool live;
 };
