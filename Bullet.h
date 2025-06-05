@@ -22,7 +22,7 @@ public:
     static const int WIDTH = 30;
     static const int HEIGHT = 32;
 
-    void Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int& numberDeath);
+    void Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int numberTanks);
     bool IsAlive();
     void Draw(HDC hdc);
     RECT GetRect() const;
