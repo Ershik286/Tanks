@@ -43,7 +43,7 @@ Bullet& Bullet::operator=(Bullet&& other) noexcept
     return *this;  // Добавлен возврат значения
 }
 
-void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int& numberDeath) {
+void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks, int numberTanks) {
     if (!isAlive) return;
 
     // Сохраняем предыдущую позицию
@@ -91,11 +91,6 @@ void Bullet::Move(Block Map[HEIGHT][WIDTH], HWND hwnd, std::vector<Tank>& tanks,
         if (isColliding(bulletRect, tankRect)) {
             bool isDestroyed = tank.damageThis(10);
             this->isAlive = false;
-
-            if (isDestroyed) {
-                //std::wstring winText = (countTank % 2 != 0) ? L"Зеленый игрок победил!" : L"Красный игрок победил!";
-                numberDeath = countTank;
-            }
             return;
         }
         countTank++;
@@ -112,14 +107,14 @@ bool Bullet::IsAlive() {
 }
 
 void Bullet::Draw(HDC hdc) {
-    // Очищаем предыдущую позицию
+    // Очищаем предыдущую позицию тем же цветом, что и поле
     RECT clearRect = {
         tempX - BULLET_SIZE / 2,
         tempY - BULLET_SIZE / 2,
         tempX + BULLET_SIZE / 2,
         tempY + BULLET_SIZE / 2
     };
-    HBRUSH clearingBrush = CreateSolidBrush(RGB(255, 255, 255));
+    HBRUSH clearingBrush = CreateSolidBrush(RGB(50, 50, 50)); // Используем цвет поля
     FillRect(hdc, &clearRect, clearingBrush);
     DeleteObject(clearingBrush);
 
