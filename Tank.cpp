@@ -21,9 +21,10 @@ Tank::Tank() : health(100), damage(10), speed(4), angle(90) {
     blockPositionX = 0; //заготовка
     blockPositionY = 0;
     live = true;
+    tempHealth = health;
 }
 
-void Tank::movement(Block Map[HEIGHT][WIDTH], vector<Tank>& tanks) { // Передаем вектор танков
+void Tank::movement(Block Map[HEIGHT][WIDTH], vector<Tank>& tanks, HWND hwnd) { // Передаем вектор танков
     tempPosition = position;
 
     if (movingVector[1] && position.y1 - speed >= 0) {
@@ -42,7 +43,7 @@ void Tank::movement(Block Map[HEIGHT][WIDTH], vector<Tank>& tanks) { // Пере
         position.x1 += speed;
         position.x2 += speed;
     }
-    if (checkMove(position, Map)) {
+    if (checkMove(position, Map, hwnd)) {
         position = tempPosition;
     }
 
@@ -61,7 +62,7 @@ bool Tank::isColliding(Position pos1, Position pos2) const {
     return !(pos1.x2 < pos2.x1 || pos1.x1 > pos2.x2 || pos1.y2 < pos2.y1 || pos1.y1 > pos2.y2);
 }
 
-bool Tank::checkMove(Position pos, Block Map[HEIGHT][WIDTH]) {
+bool Tank::checkMove(Position pos, Block Map[HEIGHT][WIDTH], HWND hwnd) {
     const int buffer = 2; // Например, 2 пикселя
 
     const pair<int, int> checkPoints[] = {
@@ -71,6 +72,8 @@ bool Tank::checkMove(Position pos, Block Map[HEIGHT][WIDTH]) {
         {pos.x2 - buffer, pos.y2 - buffer},
         {(pos.x1 + pos.x2) / 2, (pos.y1 + pos.y2) / 2}
     };
+
+    bool collisionDetected = false;
 
     for (const auto& point : checkPoints) {
         int x = point.first;
@@ -84,12 +87,25 @@ bool Tank::checkMove(Position pos, Block Map[HEIGHT][WIDTH]) {
         }
 
         int blockType = Map[blockY][blockX].getNumberBlock();
+
+        if (blockType == Block::healthBox) {
+            SetHealth(GetHealth() + 20); // Увеличиваем здоровье танка
+            Map[blockY][blockX].damage(100, hwnd); // Уничтожаем блок
+            continue; // Продолжаем проверку других точек
+        }
+
+        if (blockType == Block::damageUpBox || blockType == Block::speedUpBox) {
+            Map[blockY][blockX].damage(100, hwnd); // Уничтожаем блок
+            continue; // Продолжаем проверку других точек
+        }
+
         if (blockType != Block::emptiness && blockType != Block::foliage) {
-            return true;
+            collisionDetected = true;
+            break;
         }
     }
 
-    return false;
+    return collisionDetected;
 }
 
 vector<Bullet>& Tank::GetBullets() {
@@ -112,10 +128,11 @@ void Tank::Shoot(Block Map[HEIGHT][WIDTH]) {
 
 bool Tank::damageThis(int damage) {
     if (!live) return true; // Уже уничтожен
+    this->tempHealth = health;
 
-    health -= damage;
+    this->health -= damage;
     if (health <= 0) {
-        health = 0;
+        this->health = 0;
         this->live = false;
         return true;
     }
@@ -146,10 +163,20 @@ int Tank::GetHealth() const {
     return health;
 }
 
+int Tank::GetTempHealth() const{
+    return tempHealth;
+}
+
 void Tank::SetHealth(int newHealth) {
+    this->tempHealth = health;
     this->health = newHealth;
+    health = health > 100 ? 100 : health;
 }
 
 bool Tank::isAlive(){
     return live;
+}
+
+void Tank::mainAI(){
+
 }
