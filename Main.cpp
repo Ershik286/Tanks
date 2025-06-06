@@ -54,14 +54,15 @@ enum class GameState {
     PLAYER_3_WINS,
     PLAYER_4_WINS,
     GAME_OVER,
-    DRAW
+    DRAW,
+    STOP
 };
 
-GameState gameState = GameState::PLAYING; // Изначально игра идет
+GameState gameState = GameState::STOP; // Изначально игра идет
 
 HDC hdc;
 int level = 0;
-int playCount = 2; //количество танков
+int playCount = 1; //количество танков
 int chanceHealth = 1;//1% шанса спавна коробки
 
 int frameCount = 0;
@@ -74,6 +75,8 @@ HBRUSH leavesBrush = CreateSolidBrush(RGB(50, 135, 50));
 HBRUSH whiteBrush = CreateSolidBrush(RGB(255, 255, 255));
 HBRUSH fieldBrush = CreateSolidBrush(RGB(50, 50, 50));
 HBRUSH blackBrush = CreateSolidBrush(RGB(0, 0, 0));
+HBRUSH yellowBrush = CreateSolidBrush(RGB(255, 255, 0));
+HBRUSH blueBrush = CreateSolidBrush(RGB(0, 0, 255));
 
 HPEN tankPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Чёрная обводка
 
@@ -138,19 +141,22 @@ void DrawHealthBar(HDC hdc, int x, int y, int health, int maxHealth, HBRUSH barB
 void createMenu(HWND hwnd);
 
 vector<Tank> players;
+vector<int> points;
 vector<Bullet> depthBullet{};
 
-RECT messageRect = { 50, 35, 250, 50 }; // Область вывода сообщения о победе
+RECT messageRect = { 50, 35, 400, 80 }; // Увеличьте ширину и высоту
 
-int xMenuStart = 495; //505 + 70 = 575 - max
+int xMenuStart = 485; //505 + 70 = 575 - max
 int yHealthBarStart = 200;
 int yMenuStart = 10; //20 * playCount
-int xMenuEnd = 90;
+int xMenuEnd = 120;
+bool endGame = true;
+
 
 /*Function*/
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-    static RECT menuRect = { xMenuStart, yMenuStart, xMenuStart + 70, yMenuStart + 20 * playCount + 30 * (playCount - 1) + yHealthBarStart };
+    static RECT menuRect = { xMenuStart, yMenuStart, xMenuStart + 70, yMenuStart + 20 * playCount + 30 * playCount + yHealthBarStart };
     static int sX, sY;
     //static RECT updateRect = { 0, 0, 0, 0 }; //Removed unused variable
     static HWND hComboPlayers, hComboLabs, hComboControlWorks; // Store edit control handles
@@ -162,14 +168,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
     case WM_CREATE:
         createMenu(hwnd);
-        players.resize(playCount);
-        createTank(players[0], 16 * 16 + shift, 28 * 16 + shift, 16 * 17 + shift, 29 * 16 + shift); // Зеленый танк внизу
-        createTank(players[1], 16 * 16 + shift, 2 * 16 + shift, 17 * 16 + shift, 3 * 16 + shift);  // Красный танк вверху
+        // Не создаем танки и не запускаем таймеры здесь
         createOneLevel();
-        for (int i = 0; i < playCount; i++) {
-            SetTimer(hwnd, TIMER_ONE_PLAYER_ID + i, TIMER_INTERVAL, NULL);
-        }
-
         break;
     case WM_PAINT: {
         PAINTSTRUCT ps;
@@ -178,10 +178,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
         // Сначала рисуем карту - ONLY inside ps.rcPaint!
         Draw(hdc, ps.rcPaint, hwnd);
+        if (gameState != GameState::PLAYING) {
+            if (!endGame) {
+                endGame = true;
+            }
+            else break;
+        }
 
         // Затем рисуем танки
-        drawUnit(hwnd, players[0], greenBrush);
-        drawUnit(hwnd, players[1], redBrush);
+        for (int i = 0; i < playCount; i++) {
+            HBRUSH brush = greenBrush;
+            if (i == 0) brush = greenBrush;
+            if (i == 1) brush = redBrush;
+            if (i == 2) brush = yellowBrush;
+            if (i == 3) brush = blueBrush;
+            drawUnit(hwnd, players[i], brush);
+        }
 
         // Draw health bars for each player
         for (int i = 0; i < playCount; i++) {
@@ -232,7 +244,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             }
         }
         //  Отображение сообщения о победе
-        if (gameState != GameState::PLAYING) {
+        if (gameState != GameState::PLAYING && gameState != GameState::STOP) {
             wstring message;
             if (gameState == GameState::PLAYER_1_WINS) {
                 message = L"Победил первый игрок!";
@@ -281,14 +293,56 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_COMMAND: {
         int wmId = LOWORD(wParam);
         if (wmId == IDC_BUTTON_START_GAME) {
+            gameState = GameState::PLAYING;
+            endGame = false;
             hComboPlayers = GetDlgItem(hwnd, IDC_COMBOBOX_PLAYERS);
-            playCount = SendMessageW(hComboPlayers, CB_GETCURSEL, 0, 0); // Get selected item index
+            playCount = SendMessageW(hComboPlayers, CB_GETCURSEL, 0, 0) + 1; // +1 потому что индексы начинаются с 0
+
+            // Удаляем старые таймеры, если они были
+            for (int i = 0; i < 4; i++) {
+                KillTimer(hwnd, TIMER_ONE_PLAYER_ID + i);
+            }
+
+            // Очищаем текущих игроков
+            players.clear();
+            players.resize(playCount);
+
+            if (points.size() != playCount) {
+                points.clear();
+                points.resize(playCount);
+                for (int i = 0; i < playCount; i++) {
+                    points[i] = 0;
+                }
+            }
+
+            // Создаем танки для выбранного количества игроков
+            for (int i = 0; i < playCount; i++) {
+                if (i == 0) {
+                    createTank(players[0], 16 * 16 + shift, 28 * 16 + shift, 16 * 17 + shift, 29 * 16 + shift);
+                }
+                else {
+                    createTank(players[i], 16 * 16 + shift, 2 * 16 + shift, 17 * 16 + shift, 3 * 16 + shift);
+                }
+            }
+
+            //// Запускаем таймеры
+            for (int i = 0; i < playCount; i++) {
+                SetTimer(hwnd, TIMER_ONE_PLAYER_ID + i, TIMER_INTERVAL, NULL);
+            }
+
+            InvalidateRect(hwnd, NULL, FALSE); // Полная перерисовка окна
+            //UpdateWindow(hwnd); // Добавить эту строку после InvalidateRect
+            MessageBoxW(hwnd, L"Игра началась!", L"Start Game", NULL);
         }
+        break;
     }
 
     case WM_LBUTTONDOWN: {
         int xPos = LOWORD(lParam);
         int yPos = HIWORD(lParam);
+        wstring positionClick = to_wstring(xPos) + L"/" + to_wstring(yPos);
+        LPCWSTR positionClickLPC = positionClick.c_str();
+        MessageBoxW(hwnd, positionClickLPC, NULL, NULL); //495 -> 585, 461
         break; // Add Break here
     }
 
@@ -298,6 +352,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         break;
     }
     case WM_TIMER: {
+        //if (gameState != GameState::PLAYING) break;
         RECT updateRect = { 0, 0, 0, 0 };
         int numberTankDeath = 0;
         int numTanksAlive = 0;
@@ -308,7 +363,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 numTanksAlive++;
                 winningPlayerIndex = playerIndex;
             }
-            else continue;
             if (wParam != TIMER_ONE_PLAYER_ID + playerIndex) continue;
 
             RECT oldTankRect = GetUnitRect(players[playerIndex]);
@@ -339,6 +393,15 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 }
             }
         }
+        for (int i = 0; i < playCount; i++) {
+            if (players[i].GetTempHealth() != players[i].GetHealth()) {
+                InvalidateRect(hwnd, &menuRect, FALSE);
+                players[i].SetHealth(players[i].GetHealth());
+                break;
+            }
+        }
+        InvalidateRect(hwnd, &updateRect, FALSE);
+
         if (numTanksAlive == 0) {
             gameState = GameState::DRAW; // Tie
             InvalidateRect(hwnd, &messageRect, FALSE);
@@ -348,6 +411,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             switch (winningPlayerIndex) {
             case 0:
                 gameState = GameState::PLAYER_1_WINS;
+                points[0] += 1;
                 break;
             case 1:
                 if (playCount == 1) {
@@ -356,6 +420,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                 else {
                     gameState = GameState::PLAYER_2_WINS;
                 }
+                points[0] += 1;
                 break;
             case 2:
                 gameState = GameState::PLAYER_3_WINS;
@@ -372,14 +437,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         else {
             gameState = GameState::PLAYING;
         }
-        for (int i = 0; i < playCount; i++) {
-            if (players[i].GetTempHealth() != players[i].GetHealth()) {
-                InvalidateRect(hwnd, &menuRect, FALSE);
-                players[i].SetHealth(players[i].GetHealth());
-                break;
-            }
-        }
-        InvalidateRect(hwnd, &updateRect, FALSE);
+
         break;
     }
     case WM_KEYDOWN: {
@@ -411,24 +469,28 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             players[0].SetAngle(0); // Угол для движения вправо
             break;
         case VK_UP:
+            if (playCount < 2) break;
             for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
             tanksMoving[1] = 1;
             players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(90);
             break;
         case VK_DOWN:
+            if (playCount < 2) break;
             for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
             tanksMoving[3] = 1;
             players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(270);
             break;
         case VK_LEFT:
+            if (playCount < 2) break;
             for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
             tanksMoving[2] = 1;
             players[1].setVectorMoving(tanksMoving);
             players[1].SetAngle(180);
             break;
         case VK_RIGHT:
+            if (playCount < 2) break;
             for (int i = 0; i < 4; i++) tanksMoving[i] = 0;
             tanksMoving[0] = 1;
             players[1].setVectorMoving(tanksMoving);
@@ -438,6 +500,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             players[0].Shoot(Map1);
             break;
         case VK_SHIFT: // Стрельба для второго игрока
+            if (playCount < 2) break;
             players[1].Shoot(Map1);
             break;
         default:
@@ -447,6 +510,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         delete[] tanksMoving;
     }
     case WM_KEYUP: {
+        if (gameState != GameState::PLAYING) break;
         switch (wParam)
         {
         case 'W':
@@ -462,16 +526,20 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             players[0].movingVector[0] = 0;
             break;
         case VK_UP:
+            if (playCount < 2) break;
             players[1].movingVector[1] = 0;
             break;
         case VK_DOWN:
+            if (playCount < 2) break;
             players[1].movingVector[3] = 0;
             break;
 
         case VK_LEFT:
+            if (playCount < 2) break;
             players[1].movingVector[2] = 0;
             break;
         case VK_RIGHT:
+            if (playCount < 2) break;
             players[1].movingVector[0] = 0;
             break;
 
@@ -983,17 +1051,23 @@ bool isColliding(Tank::Position pos1, Block::position pos2) {
 }
 
 void createMenu(HWND hwnd) {
-
     HWND comboPlayers = CreateWindowW(L"COMBOBOX", L"",
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_CHILD | WS_VISIBLE,
         xMenuStart, yMenuStart, xMenuEnd, yMenuStart + 80, hwnd, (HMENU)IDC_COMBOBOX_PLAYERS,
         GetModuleHandle(NULL), NULL);
 
-    wstring maxCountPlayers[] = { L"1 Players", L"2 Players", L"3 Players", L"4 Players"};
-    for (auto& discipline : maxCountPlayers) {
-        SendMessageW(comboPlayers, CB_ADDSTRING, 0, (LPARAM)discipline.c_str());
+    //wstring maxCountPlayers[] = { L"1 Player", L"2 Players", L"3 Players", L"4 Players" };
+    wstring maxCountPlayers[] = { L"1 Player and 1 Bot", L"2 Players" };
+    for (auto& players : maxCountPlayers) {
+        SendMessageW(comboPlayers, CB_ADDSTRING, 0, (LPARAM)players.c_str());
     }
-    SendMessageW(comboPlayers, CB_SETCURSEL, 0, 0); // Выбираем первый элемент по умолчанию
+    SendMessageW(comboPlayers, CB_SETCURSEL, 1, 0); // По умолчанию выбрано 2 игрока
 
-    CreateWindowW(L"BUTTON", L"Начать игру", WS_VISIBLE | WS_CHILD, xMenuStart, yMenuStart + 100, 90, 30, hwnd, (HMENU)IDC_BUTTON_START_GAME, GetModuleHandle(NULL), NULL);
+    CreateWindowW(L"BUTTON", L"Start Game", WS_VISIBLE | WS_CHILD,
+        xMenuStart, yMenuStart + 100, 90, 30,
+        hwnd, (HMENU)IDC_BUTTON_START_GAME, GetModuleHandle(NULL), NULL);
+
+    //495 -> 585, 460
+
+    //TextOutW(hdc, 495, 460, );
 }
