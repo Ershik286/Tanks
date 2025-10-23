@@ -180,3 +180,9 @@ bool Tank::isAlive(){
 void Tank::mainAI(){
 
 }
+
+void Tank::setDamage(int newDamage){
+    newDamage = newDamage > 0 ? newDamage : 0;
+    this->damage = newDamage;
+}
+
