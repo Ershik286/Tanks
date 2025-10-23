@@ -43,7 +43,7 @@ public:
     int GetTempHealth() const;
     void SetHealth(int newHealth);
     bool isAlive();
-
+    void setDamage(int newDamage);
     void mainAI();
 
     int movingVector[4];
@@ -57,3 +57,4 @@ protected:
     int damage;
     bool live;
 };
+
