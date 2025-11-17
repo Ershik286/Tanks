@@ -90,7 +90,6 @@ HPEN tankPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Чёрная обвод�
 LRESULT CALLBACK GameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 #pragma comment(lib, "Menu.lib")
-#pragma comment(lib, "generateMapDLL.lib")  // или как называется ваш .lib файл
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     /*окно игры*/
