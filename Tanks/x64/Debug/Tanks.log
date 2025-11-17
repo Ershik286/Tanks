@@ -1,0 +1,3 @@
+﻿  Main.cpp
+C:\Users\Никита\source\repos\Tanks\Tanks\Tanks\Main.cpp(319,74): warning C4244: =: преобразование "LRESULT" в "int", возможна потеря данных
+  Tanks.vcxproj -> C:\Users\Никита\source\repos\Tanks\Tanks\x64\Debug\Tanks.exe
