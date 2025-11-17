@@ -20,6 +20,7 @@
 #include "Bullet.h"
 #include "Menu.h"
 #include "SettingsWindow.h"
+#include "generateMap.h"
 
 #define TIMER_ONE_PLAYER_ID 0
 #define TIMER_TWO_PLAYER_ID 1
@@ -88,10 +89,23 @@ HPEN tankPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0)); // Чёрная обвод�
 
 LRESULT CALLBACK GameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+#pragma comment(lib, "Menu.lib")
+#pragma comment(lib, "generateMapDLL.lib")  // или как называется ваш .lib файл
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     /*окно игры*/
     const wchar_t GAMEWINDOW_CLASS[] = L"TanksWindowClass";  // Уникальное имя класса
     const wchar_t GAMEWINDOW_TITLE[] = L"Tanks";             // Заголовок окна
+
+    //HICON hMainIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MAIN_ICON));
+    //HICON hSmallIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL_ICON));
+
+    //if (!hMainIcon) {
+    //    hMainIcon = LoadIcon(NULL, IDI_APPLICATION);
+    //}
+    //if (!hSmallIcon) {
+    //    hSmallIcon = LoadIcon(NULL, IDI_APPLICATION);
+    //}
 
     WNDCLASS GameWindowClass = {};
     GameWindowClass.lpfnWndProc = GameWindowProc;
@@ -108,28 +122,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         GAMEWINDOW_TITLE,     // Используем заголовок
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, WIDTHFIELD + 125, HEIGHTFIELD,
-        NULL, NULL, hInstance, NULL
-    );
-
-    /*меню выбора*/
-    const wchar_t MENUWINDOW_CLASS[] = L"MenuWindowClass";   // Уникальное имя класса  
-    const wchar_t MENUWINDOW_TITLE[] = L"Menu";              // Заголовок окна
-
-    WNDCLASS MenuWindowClass = {};
-    MenuWindowClass.lpfnWndProc = WindowProcMenu;
-    MenuWindowClass.hInstance = hInstance;
-    MenuWindowClass.lpszClassName = MENUWINDOW_CLASS;        // Правильное имя класса
-    MenuWindowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    MenuWindowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-
-    RegisterClass(&MenuWindowClass);
-
-    menuWindow = CreateWindowEx(
-        0,
-        MENUWINDOW_CLASS,     // Используем имя класса
-        MENUWINDOW_TITLE,     // Используем заголовок
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, WIDTHFIELD - 175, HEIGHTFIELD - 300,
         NULL, NULL, hInstance, NULL
     );
 
@@ -155,6 +147,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
         NULL, NULL, hInstance, NULL
     );
     
+    menuWindow = CreateMenuWindow(hInstance, NULL, gameWindow, settingsWindow);
 
     ShowWindow(menuWindow, nCmdShow);
     
@@ -387,9 +380,9 @@ LRESULT CALLBACK GameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     case WM_LBUTTONDOWN: {
         int xPos = LOWORD(lParam);
         int yPos = HIWORD(lParam);
-        wstring positionClick = to_wstring(xPos) + L"/" + to_wstring(yPos);
-        LPCWSTR positionClickLPC = positionClick.c_str();
-        MessageBoxW(hwnd, positionClickLPC, NULL, NULL); //495 -> 585, 461
+        //wstring positionClick = to_wstring(xPos) + L"/" + to_wstring(yPos);
+        //LPCWSTR positionClickLPC = positionClick.c_str();
+        //MessageBoxW(hwnd, positionClickLPC, NULL, NULL); //495 -> 585, 461
         break; // Add Break here
     }
 
@@ -565,11 +558,11 @@ LRESULT CALLBACK GameWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             players[1].SetAngle(0);
             break;
         case VK_SPACE: // Стрельба для первого игрока
-            players[0].Shoot(Map1);
+            players[0].Shoot();
             break;
         case VK_SHIFT: // Стрельба для второго игрока
             if (activeTank < 2) break;
-            players[1].Shoot(Map1);
+            players[1].Shoot();
             break;
         default:
             break;
@@ -634,6 +627,11 @@ void createTank(Tank& player, int x1, int y1, int x2, int y2) {
     player.position.y2 = y2;
     player.tempPosition = player.position; // Важно инициализировать tempPosition
 }
+wchar_t appDataPath[MAX_PATH];
+wstring appDataDir(appDataPath);
+
+wstring wayDirectory = appDataDir + L"\\Tanks";
+wstring mapFilePath = wayDirectory + L"\\maps.txt";
 
 RECT GetUnitRect(Tank& player) {
     RECT unitRect;
@@ -650,12 +648,18 @@ void ClearBackGround(HDC hdc, HWND hwnd, RECT rect) {
     DeleteObject(brush);
 }
 
+// Ваши callback-функции
+void InitializeBlockCallback(int x, int y, int blockType) {
+    // Конвертируем числовые константы в ваши Block:: константы
+    Map1[x][y].initialization(blockType);
+}
+
+void PositionBlockCallback(int x, int y, int posX, int posY) {
+    Map1[x][y].positionBlock(posX, posY);
+}
+
 void createOneLevel() {
-    wchar_t appDataPath[MAX_PATH];
     SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, appDataPath);
-    wstring appDataDir(appDataPath);
-    wstring wayDirectory = appDataDir + L"\\Tanks";
-    wstring mapFilePath = wayDirectory + L"\\maps.txt";
 
     // Проверяем, существует ли файл с картами
     ifstream checkFile(mapFilePath);
@@ -810,27 +814,34 @@ void createOneLevel() {
             fileMap.close();
         }
     }
-    else {
-        ifstream fileMap(mapFilePath, ios::in);
-        if (fileMap.is_open()) {
-            string line;
-            int i = 0;
-            while (getline(fileMap, line) && i < HEIGHTBLOCK) {
-                for (int j = 0; j < line.length() && j < WIDTHBLOCK; j++) {
-                    int blockType = line[j] - '0'; // Конвертируем символ в число
-                    if (blockType == Block::emptiness) {
-                        int randomHealth = rand() % (100 - 0 + 1) + 0; //шанс 1%
-                        if (randomHealth < 1) { //1%
-                            blockType = Block::healthBox;
-                        }
-                    }
-                    Map1[i][j].initialization(blockType);
-                    Map1[i][j].positionBlock(i, j);
-                }
-                i++;
+
+    HMODULE hDll = LoadLibrary(L"generateMapDLL.dll");
+    if (hDll) {
+        // Получаем указатель на функцию
+        typedef bool (*LoadMapFunc)(const wchar_t*, int, int, InitializeBlockFunc, PositionBlockFunc);
+        LoadMapFunc LoadMapFromFile = (LoadMapFunc)GetProcAddress(hDll, "LoadMapFromFile");
+
+        if (LoadMapFromFile) {
+            bool success = LoadMapFromFile(
+                mapFilePath.c_str(),
+                WIDTHBLOCK,
+                HEIGHTBLOCK,
+                InitializeBlockCallback,
+                PositionBlockCallback
+            );
+
+            if (!success) {
+                std::cout << "Ошибка загрузки карты!" << std::endl;
             }
-            fileMap.close();
         }
+        else {
+            std::cout << "Функция не найдена в DLL!" << std::endl;
+        }
+
+        FreeLibrary(hDll);
+    }
+    else {
+        std::cout << "DLL не найдена!" << std::endl;
     }
 }
 
